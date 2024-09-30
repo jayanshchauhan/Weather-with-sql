@@ -1,0 +1,58 @@
+Task 2: Write SQL Queries
+ 
+Objective: Identify duplicate entries in the users table based on email and phone_number.
+Tables:
+users: id, name, email, phone_number
+
+Ans:: 
+
+Select email,phone_number,count(*) as count
+from users
+group by email,phone_number
+having count(*) > 1;
+ 
+Objective: Retrieve the top 3 highest-paid employees within each department.
+Tables:
+employees: id, name, salary, department_id
+departments: id, name
+
+Ans::
+
+Select department_id,id,name,salary
+from (
+select department_id,id,salary, row_numbers() over (partition by department_id order by salary desc) as rowNumbers from employees ) finalSalary
+where finalSalary.rowNumbers<=3;
+ 
+Objective: Calculate the cumulative sales for each month.
+Tables:
+sales: id, sale_date, amount
+
+Ans::
+
+Select DATE_FORMAT(sale_date,"%Y-%m") as month,
+sum(amount) as total_sales
+sum(sum(amount)) over (order by DATE_FORMAT(sale_date,"%Y-%m")) as cumSales
+From sales
+group by month
+order by month;
+ 
+Objective: For each customer, calculate the total orders, total amount of completed orders, and total amount of pending orders.
+Tables:
+customers: id, name
+orders: id, customer_id, status, amount
+
+Ans::
+
+select 
+c.id as customerId,
+c.name as customer_name,count(o.id) as total_orders,
+sum(if(o.status='completed',
+o.amount,0)) as total_completed_amount,
+sum(if(o.status='pending',
+o.amount,0)) as total_pending_amount
+from customers c
+left join 
+orders o on c.id=o.customer_id
+group by
+c.id,c.name
+;

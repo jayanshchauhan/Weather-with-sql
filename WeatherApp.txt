@@ -1,0 +1,98 @@
+Task 1: Integrate with API
+Integrate with a third-party public API to display real-time weather information for a city. Use an open API like OpenWeatherMap or another public service.
+
+Task:
+Create a form where users can input a city name.
+When the form is submitted, call the external API to fetch and display the current weather conditions (temperature, humidity, etc.) for that city.
+Cache the API response for 30 minutes to avoid over-fetching data from the external API.
+
+Acceptance Criteria:
+The weather data should be displayed in a user-friendly way on the /weather route.
+Handle potential errors when the API is unavailable or the city is not found.
+ 
+// https://api.openweathermap.org/data/2.5/weather?q=gurugram&units=metric&appid=16a38d83af836c90ee6837bcc746a9d6
+
+
+// Controller File WeatherController
+
+<?php
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+
+class weatherController extends Controller{
+
+public function showWeatherForm(){
+return view('weather.form');
+}
+
+public function getWeather(Request $request){
+$request->validate([
+'city'=>'required|string'
+]);
+$city = $request->input('city');
+$cacheKey = 'weather_'.$city;
+
+// using the cache for 30 min duration hit
+
+$weatherdata = Cache::remember($cacheKey,30*60,function() use ($city){
+$apiKey = "https://api.openweathermap.org/data/2.5/weather";
+
+$response = Http::get($apiKey,[
+'q' => $city,
+'units' => 'metric',
+'appid' => '16a38d83af836c90ee6837bcc746a9d6'
+]);
+return $response->json();
+});
+
+if(isset($weatherdata['cod'] && $weatherdata['cod'] == 200){
+$weather = [
+'city' =>$city,
+'temperature' => $weatherdata['main']['temp'],
+'humidity' => $weatherdata['main']['humidity']
+];
+return view('weather.result',
+compact('weather'));
+}else{
+return redirect()->back()->with('error','City not found or invalid API response');
+}
+}
+}
+
+// View File
+
+<form
+action="{{ route('weather.get') }}"
+method = "POST">
+@csrf
+<label for ="city"> Enter City:</label>
+<input type="text" id="city" name="city" required>
+
+<button type="submit"> Get Weather </button>
+
+@if(session('error'))
+<p style="color:red;"> {{ session('error') }} </p>
+@endif
+
+</form>
+
+
+// Result view(resoruces/views/weather/result.blade.php)
+
+<h1> Weather in {{ $weather['city'] }}</h1>
+<p> Temperature:
+{{ $weather['temperature'] }} deg Celcius <p>
+<p> Humidity : {{ $weather['humidity'] }} % <p>
+
+
+
+// Routes 
+
+Route::get('/weather,
+[WeatherController::class,'showWeatherForm])->name('weather.form');
+
+Route::post('/weather,
+[WeatherController::class,'getWeather])->name('weather.get');
